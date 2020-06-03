@@ -111,6 +111,7 @@ def get_cache_out(input_hash):
 def get_cache_root():
     system = platform.system()
     if system == 'Darwin':
+        # darwin does not allow adding directories to /
         home = os.path.expanduser("~")
         return os.path.join(home, ".wake-job-cache")
     else:
