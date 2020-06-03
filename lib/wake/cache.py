@@ -109,6 +109,10 @@ def get_cache_out(input_hash):
     return os.path.join(get_cache_root(), input_hash+"-out.json")
 
 def get_cache_root():
+    env = os.environ.get("WAKE_CACHE_LOCATION")
+    if env is not None:
+        return env # NOTE: does not verify if it's a valid path
+
     system = platform.system()
     if system == 'Darwin':
         # darwin does not allow adding directories to /
