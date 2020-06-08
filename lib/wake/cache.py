@@ -35,22 +35,32 @@ def main():
     cache_out = get_cache_out(input_hash)
 
     if not os.path.exists(cache_dir):
+        shutil.copy(input_path, get_cache_in(input_hash))
         os.makedirs(cache_dir)
         with tempfile.NamedTemporaryFile() as tmp_out:
-            orig_cwd = os.getcwd()
-            os.chdir(cache_dir)
+            #orig_cwd = os.getcwd()
+            #os.chdir(cache_dir)
             fuse_wake = os.path.join(os.path.dirname(__file__), 'fuse-wake')
             subprocess.call([fuse_wake, input_path, tmp_out.name], bufsize=4096, stdout=sys.stdout, stderr=sys.stderr)
-            os.chdir(orig_cwd)
+            #os.chdir(orig_cwd)
 
             shutil.copy(tmp_out.name, output_path)
-            out_json = tmp_out.read()
+            shutil.copy(tmp_out.name, cache_out+".real")
+            out_json = tmp_out.read().decode()
 
         out_obj = json.loads(out_json)
 
         if out_obj['usage']['status'] != 0:
-            shutil.rmtree(cache_dir)
+            #shutil.rmtree(cache_dir)
             return # don't cache failed jobs
+
+        for path in out_obj['outputs']:
+            os.makedirs(os.path.dirname(os.path.join(cache_dir, path)), exist_ok=True)
+#            shutil.copy(path, os.path.join(cache_dir, path))
+            if os.path.isdir(path):
+                copy_tree(path, os.path.join(cache_dir, path))
+            else:
+                shutil.copy(path, os.path.join(cache_dir, path))
         
         out_obj['usage']['runtime'] = 0
         out_obj['usage']['cputime'] = 0
@@ -67,8 +77,10 @@ def main():
             time.sleep(1) # arbitrary time
         
         shutil.copy(cache_out, output_path)
+        shutil.copy(input_path, cache_out+'aaaaaa')
     
-    copy_all(cache_dir, os.getcwd())
+        #copy_all(cache_dir, os.getcwd())
+        copy_tree(cache_dir, os.getcwd())
 
 def get_input_hash(input_path):
     with open(input_path, "r") as f:
@@ -81,32 +93,49 @@ def get_input_hash(input_path):
     std_json += '"command":'
     std_json += json.dumps(input_obj['command'])
     std_json += ',"environment":'
+    input_obj['environment'].sort()
     std_json += json.dumps(input_obj['environment'])
     std_json += ',"resources":'
     std_json += json.dumps(input_obj['resources'])
     std_json += ',"visible":['
 
     # sort visible files by filename
-    input_obj['visible'].sort(key=lambda x: x.path)
-    for (idx, v) in input_obj['visible']:
+    #input_obj['visible'].sort(key=lambda x: x.path)
+    input_obj['visible'].sort()
+    #std_json += json.dumps(input_obj['visible'])
+    for (idx, path) in enumerate(input_obj['visible']):
         # use json.dumps for strings to prevent injection attacks
         # (better safe than sorry)
         if idx > 0:
             std_json += ','
         std_json += '{"hash":'
-        std_json += json.dumps(v['hash'])
+        BLOCK = 65536
+
+        hash = hashlib.blake2b()
+        with open(path, 'rb') as f:
+            fbytes = f.read(BLOCK)
+            while len(fbytes) > 0:
+                hash.update(fbytes)
+                fbytes = f.read(BLOCK)
+        std_json += json.dumps(hash.hexdigest())
         std_json += ',"path":'
-        std_json += json.dumps(v['path'])
+        std_json += json.dumps(path)
         std_json += '}'
     std_json += ']}'
 
-    return hashlib.sha256(std_json.encode()).hexdigest()
+    input_hash = hashlib.sha256(std_json.encode()).hexdigest()
+    with open(get_cache_in(input_hash)+'-processed', 'w') as f:
+        f.write(std_json)
+    return input_hash
 
 def get_cache_dir(input_hash):
     return os.path.join(get_cache_root(), input_hash)
 
 def get_cache_out(input_hash):
     return os.path.join(get_cache_root(), input_hash+"-out.json")
+
+def get_cache_in(input_hash):
+    return os.path.join(get_cache_root(), input_hash+"-0-in.json")
 
 def get_cache_root():
     env = os.environ.get("WAKE_CACHE_LOCATION")
@@ -119,7 +148,7 @@ def get_cache_root():
         home = os.path.expanduser("~")
         return os.path.join(home, ".wake-job-cache")
     else:
-        return '/wake-job-cache'
+        return '/scratch/ajanse/wake-job-cache'
 
 # NOTE: this is not atomic!
 # the `cp path/to/x /tmp/x ; mv /tmp/x .` trick may not work
@@ -137,3 +166,4 @@ def copy_all(src, dst):
             shutil.copy(srcPath, dst)
 
 main()
+
