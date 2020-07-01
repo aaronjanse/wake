@@ -41,7 +41,7 @@ def all variant =
 # Install wake into a target location
 def doInstall dest =
   def datfiles = sources "{here}/share" `.*`
-  def binfiles = (allOut default) ++ (sources "{here}/lib/wake" `cache\.py`)
+  def binfiles = (allOut default) ++ (sources "{here}/lib/wake" `cache`)
   def releaseBin exe = installAs "{dest}/{replace `\.[^.]*$` '' exe.getPathName}" exe
   def datinstall = map (installIn dest) datfiles
   def bininstall = map releaseBin binfiles

@@ -393,7 +393,6 @@ export def getJobStatus job = match (getJobReport job)
 # Wrapper to cache fuseRunner
 def wakePath = prim "execpath" # location of the wake executable
 export def cachedRunner =
-  # Wake truncates the '.py' from 'cache.py'
   def cached = "{wakePath}/../lib/wake/cache"
   def score plan =
     if plan.getPlanLocalOnly then Fail "would hide workspace" else Pass 1.0
