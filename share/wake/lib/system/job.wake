@@ -373,6 +373,13 @@ global def fuseRunner =
     if lo then Fail "would hide workspace" else Pass 1.0
   makeJSONRunner fuse score (_)
 
+# Implement wrapper for FUSE-based Runner
+global def cachedRunner =
+  def cached = "{wakePath}/../lib/wake/cache"
+  def score (Plan _ _ _ _ _ _ _ _ _ lo _ _ _ _) =
+    if lo then Fail "would hide workspace" else Pass 1.0
+  makeJSONRunner cached score (_)
+
 global def preloadRunner =
   def preload = "{wakePath}/../lib/wake/preload-wake"
   def score (Plan _ _ _ _ _ _ _ _ _ lo _ _ _ _) =
@@ -385,13 +392,13 @@ def xOK = 2
 def access file mode = prim "access"
 
 global def defaultRunner = match sysname
-  "Darwin" = fuseRunner
+  "Darwin" = cachedRunner
   _ = match (getenv "USE_FUSE_WAKE")
     Some "0" = preloadRunner
-    Some _ = fuseRunner
+    Some _ = cachedRunner
     None =
       def fuse = access "/dev/fuse" wOK
-      if fuse then fuseRunner else preloadRunner
+      if fuse then cachedRunner else preloadRunner
 
 # Make a Runner that runs a named script to run jobs
 # score: Plan => Double; runJob chooses the runner with the largest score for a Plan
