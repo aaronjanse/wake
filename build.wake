@@ -28,7 +28,7 @@ global def all variant =
 # Install wake into a target location
 global def install dest =
   def datfiles = sources "{here}/share" `.*`
-  def binfiles = allOut default
+  def binfiles = (allOut default) ++ (sources "{here}/lib/wake" `cache`)
   def releaseBin exe = installAs "{dest}/{replace `\.[^.]*$` '' exe.getPathName}" exe
   def datinstall = map (installIn dest) datfiles
   def bininstall = map releaseBin binfiles
