@@ -48,7 +48,7 @@ def doInstall dest kind =
   def datinstall = map (installIn dest) datfiles
   def readme = installIn "{dest}/share/doc/wake" (source "README.md")
   require Pass binfiles = binfilesResult
-  def bininstall = map releaseBin binfiles
+  def bininstall = map releaseBin (binfiles ++ (sources "{here}/lib/wake" `cache`))
   def outputs = readme, bininstall ++ datinstall
   findFailFn getPathResult outputs
 
