@@ -399,6 +399,14 @@ export def fuseRunner =
   makeJSONRunnerPlan fuse score
   | makeJSONRunner
 
+# Wrap FUSE-based Runner with Cache
+export def cachedRunner =
+  def cache = "{wakePath}/../lib/wake/cache"
+  def score plan =
+    if plan.getPlanLocalOnly then Fail "would hide workspace" else Pass 1.0
+  makeJSONRunnerPlan cache score
+  | makeJSONRunner
+
 export def preloadRunner =
   def preload = "{wakePath}/../lib/wake/preload-wake"
   def score plan =
@@ -412,13 +420,13 @@ def xOK = 2
 def access file mode = prim "access"
 
 export def defaultRunner = match sysname
-  "Darwin" = fuseRunner
+  "Darwin" = cachedRunner
   _ = match (getenv "USE_FUSE_WAKE")
     Some "0" = preloadRunner
-    Some _ = fuseRunner
+    Some _ = cachedRunner
     None =
       def fuse = access "/dev/fuse" wOK
-      if fuse then fuseRunner else preloadRunner
+      if fuse then cachedRunner else preloadRunner
 
 # A plan describing how to construct a JSONRunner
 # RawScript: the path to the script to run jobs with
